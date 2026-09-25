@@ -1,0 +1,135 @@
+{
+  "system": "VoiceForge",
+  "config": {
+    "sample_rate": 8000,
+    "frame_ms": 25,
+    "hop_ms": 10,
+    "n_mels": 40,
+    "n_mfcc": 13,
+    "random_seed": 42,
+    "feature_backend": "numpy",
+    "n_classes": 5,
+    "n_per_class": 40,
+    "duration_s": 1.0,
+    "test_size": 0.3,
+    "noise_std": 0.02
+  },
+  "runs": [
+    {
+      "tag": "primary",
+      "dataset": "synth-audio",
+      "n_samples": 200,
+      "backend": "numpy",
+      "model": "sklearn-rf",
+      "metrics": {
+        "accuracy": 0.9833333333333333,
+        "f1_macro": 0.9833043478260869,
+        "n_train": 140,
+        "n_test": 60,
+        "fit_ms": 216.5989875793457
+      }
+    },
+    {
+      "tag": "librosa-backend",
+      "dataset": "synth-audio",
+      "n_samples": 200,
+      "backend": "librosa",
+      "model": "sklearn-rf",
+      "metrics": {
+        "accuracy": 1.0,
+        "f1_macro": 1.0,
+        "n_train": 140,
+        "n_test": 60,
+        "fit_ms": 137.8951072692871
+      }
+    }
+  ],
+  "pitch": {
+    "pitch_rmse": 7.409266153538893,
+    "pitch_mae": 5.642690835547981,
+    "pitch_max_err": 16.571428571428555,
+    "n": 20,
+    "detail": [
+      {
+        "true_hz": 162.0,
+        "est_hz": 163.27
+      },
+      {
+        "true_hz": 491.0,
+        "est_hz": 500.0
+      },
+      {
+        "true_hz": 434.0,
+        "est_hz": 444.44
+      },
+      {
+        "true_hz": 330.0,
+        "est_hz": 333.33
+      },
+      {
+        "true_hz": 327.0,
+        "est_hz": 333.33
+      },
+      {
+        "true_hz": 532.0,
+        "est_hz": 533.33
+      },
+      {
+        "true_hz": 161.0,
+        "est_hz": 160.0
+      },
+      {
+        "true_hz": 454.0,
+        "est_hz": 444.44
+      },
+      {
+        "true_hz": 216.0,
+        "est_hz": 216.22
+      },
+      {
+        "true_hz": 165.0,
+        "est_hz": 166.67
+      },
+      {
+        "true_hz": 372.0,
+        "est_hz": 380.95
+      },
+      {
+        "true_hz": 588.0,
+        "est_hz": 571.43
+      },
+      {
+        "true_hz": 473.0,
+        "est_hz": 470.59
+      },
+      {
+        "true_hz": 485.0,
+        "est_hz": 500.0
+      },
+      {
+        "true_hz": 464.0,
+        "est_hz": 470.59
+      },
+      {
+        "true_hz": 497.0,
+        "est_hz": 500.0
+      },
+      {
+        "true_hz": 366.0,
+        "est_hz": 363.64
+      },
+      {
+        "true_hz": 181.0,
+        "est_hz": 181.82
+      },
+      {
+        "true_hz": 523.0,
+        "est_hz": 533.33
+      },
+      {
+        "true_hz": 336.0,
+        "est_hz": 333.33
+      }
+    ]
+  }
+}

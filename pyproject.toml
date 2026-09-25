@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voiceforge"
+version = "1.0.0"
+description = "VoiceForge: 语音/音频机器学习系统（纯 numpy 离线兜底 + 可选 SOTA 后端）"
+authors = [{ name = "晨星" }]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "scikit-learn>=1.3",
+]
+
+[project.optional-dependencies]
+sota = [
+    "librosa>=0.10",
+    "optuna>=3.0",
+    "openai-whisper>=20231117",
+    "speechbrain>=1.0",
+]
+test = ["pytest>=7.0"]
+
+[project.scripts]
+voiceforge = "voiceforge.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["voiceforge*"]
