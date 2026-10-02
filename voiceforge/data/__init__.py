@@ -1,15 +1,23 @@
-"""data: 合成音频生成 + 文件载入。"""
-from .synth import (
-    CLASS_WAVEFORMS,
-    generate_sample,
-    generate_dataset,
+"""Data layer: waveform synthesis, corpus assembly, and cached loading."""
+
+from __future__ import annotations
+
+from .synthesis import (
+    SynthesisParams,
+    apply_channel,
+    apply_noise,
+    build_speaker_profiles,
+    measure_snr_db,
+    speaker_profile,
+    synthesize_utterance,
 )
-from .loader import load_wav, save_wav
 
 __all__ = [
-    "CLASS_WAVEFORMS",
-    "generate_sample",
-    "generate_dataset",
-    "load_wav",
-    "save_wav",
+    "SynthesisParams",
+    "apply_channel",
+    "apply_noise",
+    "build_speaker_profiles",
+    "measure_snr_db",
+    "speaker_profile",
+    "synthesize_utterance",
 ]

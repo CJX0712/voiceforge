@@ -1,4 +1,7 @@
-"""pipeline: 端到端编排 VoicePipeline.run() + benchmark()。"""
-from .pipeline import VoicePipeline
+"""Pipeline layer: orchestration of corpus, training, evaluation and reporting."""
 
-__all__ = ["VoicePipeline"]
+from __future__ import annotations
+
+from .voiceforge import RunContext, evaluate_dataset_seed
+
+__all__ = ["RunContext", "evaluate_dataset_seed"]

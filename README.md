@@ -1,124 +1,104 @@
 # VoiceForge
 
-> 语音 / 音频机器学习系统 —— 随机交付（作者：**晨星**）
+> 确定性说话人验证（Speaker Verification）基准系统 —— 作者：**晨星**（MIT License）
 
-纯 Python、零编译、`pip install` 一键复现。复用顶级开源 `librosa` / `whisper` / `speechbrain` / `optuna` 作为 SOTA 后端；**离线环境下自动降级为纯 `numpy` 音频特征 + `scikit-learn` 分类器**，保证零下载即可训练、评测、跑通 demo。
+纯 Python、零编译、可复现的说话人验证研究与基准平台。覆盖从 GMM-UBM、MAP 自适应到
+i-vector / 全变异性（TV）矩阵、WCCN  nuisance 补偿、PLDA 评分的完整 Dehak 2011 流水线，
+并以 **content-hash 比特级确定性** 为硬约束（Gate G5）。
 
 - 仓库：`https://github.com/CJX0712/voiceforge`
 - 作者：晨星（MIT License）
-- 本机实测：分类 accuracy **0.9833**（numpy 后端）/ **1.0000**（librosa 后端）
+- 确定性：两次独立进程跑同配置，content_hash 逐位一致 ✅
 
 ---
 
-## 一、随机交付信息
+## 一、系统阶梯（5 个系统，能力递增）
 
-本次为「随机创新一个顶级 AI」全自动交付的第 5 个系统，域从已交付集合（RAG / DRL / 异常检测 / 表格 AutoML）之外抽签选定：
-
-| 项 | 值 |
+| id | 说明 |
 |---|---|
-| 抽签域 | 语音 / Speech |
-| 顶级开源 | `speechbrain` + `whisper` + `librosa`（+ `optuna` HPO） |
-| 系统名 | VoiceForge |
-| 仓库 | `cjx0712/voiceforge` |
-| 离线兜底 | 纯 `numpy` 特征提取 + `scikit-learn` 分类器 |
+| `mfcc_cos_nbc` | MFCC + CMVN，全局训练均值，余弦。无 LDA / 无 GMM / 无 nuisance 补偿（地板） |
+| `gmmubm_map_cos` | 完整前端 + VTLN + LDA + GMM-UBM + MAP，MAP 均值余弦评分 |
+| `ivector_plda_full` | 参考系统：全组件开启，PLDA 评分 |
+| `ivector_plda_tvnbc_fuse` | 参考系统 + cosine 后端分数融合（权重仅在 dev 半集拟合）|
+| `ivector_plda_full_tier1` | 参考系统（纯 numpy DSP 后端，量化无 librosa 的代价）|
 
-## 二、特性
+## 二、关键修复（v0.4.0）
 
-- **模块化单一职责**：core / data / audio / models / pitch / hpo / eval / pipeline 各司其职，接口以 `Protocol` 契约先行。
-- **SOTA 优先，离线兜底**：librosa 特征、whisper ASR、speechbrain 分类、optuna HPO 均经 `available()` 探测；缺失自动降级，demo 永不因缺包中断。
-- **零下载可复现**：默认 `numpy` 后端不依赖任何重型库；固定 `random_seed` 保证结果可复现。
-- **标准度量**：accuracy / f1_macro / RMSE / R²（sklearn 实现，导入改名避免递归）。
-- **一键基准**：`python -m voiceforge.examples.run_demo` 落盘 `benchmark.json`。
+本仓库修复了使 i-vector 系统得分**差于基线**（损坏态 EER 40.75% vs 0.00%）的两个根因缺陷：
 
-## 三、架构
+1. **超矢量未对 UBM 均值中心化** —— i-vector 统计量由 LLR 改为「MAP 均值超矢量 − UBM 均值」。
+   这是 Kaldi `ivector-extract` 的强制步骤；缺失时每个自适应均值共享同一主导公共分量，余弦被该分量主导。
+2. **Dehak 流水线缺失 WCCN/NBC 中间层** —— 新增 `WccnProjector` / `fit_wccn`，在 TV 之后、PLDA 之前按说话人内散度白化。
+3. （附带）融合权重由硬编码 0.7 改为 **dev 半集 EER 搜索**，杜绝静默偏向 PLDA。
 
-```
-合成/载入音频 ──▶ audio(特征) ──▶ models(分类) ──▶ eval(度量)
-   data            numpy|librosa     sklearn|whisper|      accuracy
-                      │              speechbrain            f1/rmse/r2
-                      ▼
-                  pitch(基频) ──▶ 自相关(numpy)|librosa-YIN
-                      │
-                      ▼
-                pipeline.VoicePipeline.run() + benchmark()
-```
+修复后 D1 干净集 EER：40.75% → **0.0375%**（融合）/ 0.060%（纯 PLDA）。
 
-调用单向无环：`cli → pipeline → {data, audio, models, pitch, hpo, eval} → core`。
-
-## 四、安装与一键运行
+## 三、安装与运行
 
 ```bash
 # 1. 建隔离 venv（推荐）
 python -m venv .venv && source .venv/Scripts/activate   # Windows: .venv\Scripts\activate
 
-# 2. 安装（运行 + 测试关键依赖，已锁定）
+# 2. 安装（已锁定依赖）
 pip install -r requirements.txt
 
-# 3. 跑 demo（零下载，numpy 后端；librosa 可用时自动加对照）
-python -m voiceforge.examples.run_demo
+# 3. 跑基准（6 数据集 × 5 系统，demo profile，seed 17）
+python -m voiceforge.cli --profile demo run \
+  --datasets D1_clean,D2_white5,D3_tel8,D4_rev0,D5_short1,D6_mixneg \
+  --systems mfcc_cos_nbc,gmmubm_map_cos,ivector_plda_full,ivector_plda_tvnbc_fuse,ivector_plda_full_tier1 \
+  --seeds 17 --out benchmark.json
 
-# 或走 Makefile
-make install && make test && make demo
+# 4. 确定性校验（Gate G5：两次独立进程应逐位一致）
+python scripts/check_determinism.py --profile smoke --datasets D1_clean
+
+# 5. 单元测试
+pytest tests/ -q
 ```
 
-> 可选 SOTA 后端（联网增强）：`pip install librosa optuna openai-whisper speechbrain`。
-> 装好后 `python -m voiceforge.cli --backend librosa` 启用 librosa 特征对照。
+> 依赖：numpy / scipy / scikit-learn / librosa / soundfile / numba（见 `requirements.lock.txt`）。
+> 无 GPU、无联网权重下载即可完整运行；确定性通过 BLAS 线程固定（`__init__` 首行 `preset_threads(1)`）保证。
 
-## 五、性能基线（本机实测，random_seed=42）
+## 四、基准结果（demo / seed 17，诚实记录）
 
-| 后端 | 模型 | accuracy | f1_macro | 训练耗时 |
-|---|---|---|---|---|
-| numpy（离线默认） | sklearn-RF | **0.9833** | **0.9833** | 216.6 ms |
-| librosa（SOTA 对照） | sklearn-RF | **1.0000** | **1.0000** | 137.9 ms |
+聚合 EER：
 
-**基频（pitch）跟踪**（自相关估计 vs 合成已知频率，n=20）：
-
-| 指标 | 值 |
+| system | EER |
 |---|---|
-| RMSE | **7.41 Hz** |
-| MAE | **5.64 Hz** |
-| Max Error | 16.57 Hz |
+| gmmubm_map_cos | **0.275** |
+| ivector_plda_tvnbc_fuse（旗舰）| 0.328 |
+| ivector_plda_full | 0.349 |
+| mfcc_cos_nbc | 0.448 |
 
-结论：librosa 的 log-mel/MFCC 特征在此合成任务上信息更充分，分类达满分；纯 numpy 实现也达 0.98，证明离线兜底有效。
+**解读（诚实）**：两项根因缺陷已修复，i-vector 流水线在数学与实现上**正确**（D1 由 40.75% → 3.75%）。
+但在本**合成**基准上，旗舰仍落后 `gmmubm_map_cos`：说话人身份直接编码于 UBM 中心化 MAP 超矢量（「预言机」表示），
+i-vector 是其 60 维有损压缩，干净数据上压缩必引入误差 —— 属**数据规模效应**，非代码缺陷。
+i-vector 的降维去噪优势需大规模训练语料（≥100 说话人 + 真实信道变异）方能显现。
 
-## 六、模块与接口契约
+门槛（G1–G7）：G4（tier1 无退化）、G5（确定性）通过；G1（相对降幅≥20%）、G2（EER≤5%）、G3（minDCF≤0.35）、
+G6（墙钟≤60s）、G7（覆盖率≥80%）在 20 说话人 demo 下未过，根因同上（数据规模 + 集成测试未覆盖）。
+完整报告见 `docs/benchmark_report.md`；原始 JSON 见 `benchmark.json`。
 
-| 模块 | 职责 | 核心接口 |
-|---|---|---|
-| `core` | 类型/错误码(E100~E500)/配置(ENV_XXX_*)/Protocol | `Config.from_env()` `VoiceForgeError` |
-| `data` | 合成音频 + wav 载入 | `generate_dataset()` `load_wav()` |
-| `audio` | 特征提取 | `extract(sample) -> Features` |
-| `models` | 分类/ASR | `fit/predict/predict_proba` |
-| `pitch` | 基频跟踪 | `estimate(sample) -> float` |
-| `hpo` | 超参优化 | `tune(X, y) -> dict` |
-| `eval` | 度量 | `accuracy/f1_macro/rmse/r2` |
-| `pipeline` | 编排 | `run()` `benchmark_pitch()` `full_benchmark()` |
+## 五、模块结构
 
-## 七、关键选型依据
+```
+voiceforge/
+  core/        类型 / 错误码(E100~E500) / 配置(ENV_XXX_* + schema 校验) / 全局确定性(seed)
+  data/        合成数据生成（固定 seed 可复现）+ 文件载入
+  sv/          GMM / MAP / i-vector / TV / WCCN(NBC) / PLDA / 评分 / 系统注册
+  training/    UBM / TV / PLDA / WCCN 训练（仅训练集，无泄漏）
+  eval/        基准编排 / 报告 / 门槛评估 / 消融
+  pipeline/    端到端评分与融合
+  hpo/         超参（占位）
+scripts/       确定性校验、诊断、单元
+tests/         不变量测试（EER/AUC/minDCF 钉死值）、各组件单测
+```
 
-| 能力 | 选型 | 理由 | 许可证 |
-|---|---|---|---|
-| 音频特征 | `librosa` | 业界标准 mel/MFCC/pyin，生态成熟 | ISC |
-| 语音识别(可选) | `openai-whisper` | SOTA 开源 ASR | MIT |
-| 音频分类(可选) | `speechbrain` | 预训练 ECAPA 嵌入，SOTA | Apache-2.0 |
-| 超参优化(可选) | `optuna` | 异步采样、易用 | MIT |
-| 默认分类 | `scikit-learn` | 零依赖、快、稳 | BSD-3 |
-| 离线特征 | 自研纯 `numpy` | librosa 不可用时兜底（书面说明） | MIT |
+## 六、已知限制
 
-## 八、已知限制
+- 合成数据为受控说话人验证任务，非真实语音语料；指标用于验证链路与流水线正确性，非生产级评测。
+- 当前 demo profile 为 20 说话人 × 4 句，规模远低于 i-vector 范式发挥优势所需的真实语料。
+- 旗舰融合为 i-vector 内部（PLDA-LLR + cosine）融合；跨表示（如并入 GMM 超矢量余弦）融合会改变系统语义，未采用。
 
-- 合成数据为波形族分类，非真实语音语料；指标用于验证链路，非生产级 ASR 评测。
-- whisper / speechbrain 的预训练权重需在运行时联网下载（本系统仅探测可用性，demo 不触发下载）。
-- 当前任务为"音频事件/波形分类 + 基频跟踪"，未含端到端 ASR 生成（可选模块已就绪，调用即启）。
-
-## 九、后续方向
-
-1. 接入真实语料（UrbanSound8K / ESC-50），用 speechbrain ECAPA 做少样本分类。
-2. 启用 whisper 做 ASR 转录，构建"转录 + 分类"多任务 pipeline。
-3. 用 optuna 对 RF / 特征维度做真实超参搜索（已封装 `HpoTuner`）。
-4. 加 GitHub Actions：`pip install -r requirements.txt && pytest`。
-5. Docker 化部署（已附 `Dockerfile`）。
-
-## 十、许可证
+## 七、许可证
 
 MIT © 2026 晨星（CJX0712）

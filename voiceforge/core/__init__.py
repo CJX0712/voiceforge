@@ -1,29 +1,55 @@
-"""core: 类型 / 错误码 / 配置 / 接口契约（单一职责，契约先行）。"""
-from .types import AudioSample, Features, Prediction, BenchmarkResult
+"""Core layer: errors, config, types, interfaces, determinism, backend, logging.
+
+Import order matters inside this package: :mod:`~voiceforge.core.seed` must be
+importable on its own (it is used by ``voiceforge/__init__.py`` before numpy is
+loaded), and every other core module is pure standard library.
+"""
+
+from __future__ import annotations
+
 from .errors import (
+    BackendNotAvailable,
+    ConfigError,
+    CorpusError,
+    DataError,
+    DspBackendError,
+    DtypeError,
+    EMNotConverged,
+    EvalError,
+    FeatureError,
+    MetricError,
+    ModelError,
+    PipelineError,
+    RankDeficientError,
+    SchemaValidationError,
+    ShapeError,
+    SynthesisError,
+    UnknownEnvKeyError,
     VoiceForgeError,
-    err_config,
-    err_data,
-    err_model,
-    err_eval,
-    err_pipeline,
 )
-from .config import Config
-from .interfaces import FeatureExtractor, Classifier, PitchTracker
+from .seed import content_hash, preset_threads, rng, set_all
 
 __all__ = [
-    "AudioSample",
-    "Features",
-    "Prediction",
-    "BenchmarkResult",
+    "BackendNotAvailable",
+    "ConfigError",
+    "CorpusError",
+    "DataError",
+    "DspBackendError",
+    "DtypeError",
+    "EMNotConverged",
+    "EvalError",
+    "FeatureError",
+    "MetricError",
+    "ModelError",
+    "PipelineError",
+    "RankDeficientError",
+    "SchemaValidationError",
+    "ShapeError",
+    "SynthesisError",
+    "UnknownEnvKeyError",
     "VoiceForgeError",
-    "err_config",
-    "err_data",
-    "err_model",
-    "err_eval",
-    "err_pipeline",
-    "Config",
-    "FeatureExtractor",
-    "Classifier",
-    "PitchTracker",
+    "content_hash",
+    "preset_threads",
+    "rng",
+    "set_all",
 ]
