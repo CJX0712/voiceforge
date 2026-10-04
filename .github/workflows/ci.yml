@@ -1,0 +1,30 @@
+name: ci
+
+# Minimal repository hygiene gate.
+# Author: 晨星
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: repository hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Required files
+        run: |
+          if [ ! -s README.md ]; then echo "::error::README.md missing or empty"; exit 1; fi
+          echo "README.md present"
+          ls -la
